@@ -254,7 +254,7 @@ export function ViewController() {
                 let mask = 0;
                 mask = set_flag(mask, DcCardStates.HOME_1 + h, true);
                 mask = set_flag(mask, DcCardStates.OPENED, game_state.cards[id].isOpen);
-                state_manager.update_states(id, mask, 100 + i);
+                state_manager.update_states(id, mask, i);
             }
         }
     }
