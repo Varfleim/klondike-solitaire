@@ -6,7 +6,7 @@ import { StateItemInfo, TransitionList } from "../logic_state_machine/state_inte
 import { isEqualPos } from "./utils";
 import { GoManager } from "../modules/GoManager";
 import { IGameItem, Messages } from "../modules/modules_const";
-import { drawCardCount, helpMoveCount } from "../gameConfig";
+import { displayWasteCardCount, drawCardCount, helpMoveCount } from "../gameConfig";
 
 interface ClickCardInfo extends IGameItem {
     id_stack?: number;
@@ -279,7 +279,7 @@ export function ViewController() {
             to_pos.x = tmp.x;
             to_pos.y = tmp.y;
             
-            let offset_index = Math.max(0, last_state.wasteIDs.length - drawCardCount);
+            let offset_index = Math.max(0, last_state.wasteIDs.length - displayWasteCardCount);
             offset_index = Math.max(0, state.index - offset_index);
             to_pos.x += offset_card * offset_index;
         }

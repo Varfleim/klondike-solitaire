@@ -1,4 +1,4 @@
-import { drawCardCount, stackCount, homeCount } from "../gameConfig";
+import { drawCardCount, displayWasteCardCount, stackCount, homeCount } from "../gameConfig";
 import { CDRanks, CardData, CardState } from "./card";
 import { CardList, GameState } from "./state";
 import { createCardList, getShuffledIndexes } from "./utils";
@@ -62,7 +62,7 @@ export function Game()
         {
             gameState.homesIDs.push([]);
         }
-
+        
         view.configure_times(0, 0);
         view.state_manager.configure_seq_list_items(DcTransitionItems.PARALLEL);
 
@@ -81,23 +81,25 @@ export function Game()
         
         await view.apply_state(gameState, true);
 
-        view.configure_times(0.5, 0.2);
         view.state_manager.configure_seq_list_items(DcTransitionItems.PARALLEL);
 
         for(let i = 0; i < gameState.stacksIDs.length; i++)
         {
-            for(let j = 0; j <= i; j++)
+            for(let j = i; j < gameState.stacksIDs.length; j++)
             {
-                transferLastCard(gameState.stockIDs, gameState.stacksIDs[i], false);
+                transferCards(gameState.stockIDs[gameState.stockIDs.length - 1],
+                    gameState.stockIDs, gameState.stacksIDs[j],
+                    0.5, 0.2, false);
 
                 await flow.delay(0.01);
                 await view.apply_state(gameState, false);
             }
-
-            await openLastCard(gameState.stacksIDs[i]);
         }
 
-        await view.apply_state(gameState, true);
+        for(let i = 0; i < gameState.stacksIDs.length; i++)
+        {
+            await openLastCard(gameState.stacksIDs[i]);
+        }
     }
 
     function saveHistory()
@@ -120,23 +122,13 @@ export function Game()
 
     async function lastFromStockToWaste()
     {
-        if(gameState.wasteIDs.length > 0)
-        {
-            const lastIndex = Math.max(0, gameState.wasteIDs.length - drawCardCount);
-
-            for(let i = gameState.wasteIDs.length - 1; i >= lastIndex; i--)
-            {
-                gameState.cards[gameState.wasteIDs[i]].isOpen = false;
-            }
-
-            await view.apply_state(gameState, true);
-        }
-        
         for(let i = 0; i < drawCardCount; i++)
         {
             if(gameState.stockIDs.length > 0)
             {
-                transferLastCard(gameState.stockIDs, gameState.wasteIDs, false);
+                transferCards(gameState.stockIDs[gameState.stockIDs.length - 1],
+                    gameState.stockIDs, gameState.wasteIDs,
+                    0.1, 0.2, false);
             }
             else
             {
@@ -634,8 +626,8 @@ export function Game()
 
         return view.do_victory();
     }
-    
-    async function transferCards(cardID: number, fromPile: CardList, toPile: CardList, openLast: boolean = true) 
+
+    async function transferCards(cardID: number, fromPile: CardList, toPile: CardList, movingTime: number, openingTime: number, openLast: boolean = true) 
     {
         //Берём переносимые карты
         const transferredCards = fromPile.splice(fromPile.indexOf(cardID), fromPile.length);
@@ -643,7 +635,7 @@ export function Game()
         //Переносим их в целевой массив
         toPile.push(...transferredCards);
         
-        view.configure_times(0.1, 0.2);
+        view.configure_times(movingTime, openingTime);
         await view.apply_state(gameState, true);
 
         if(openLast == true)
@@ -654,21 +646,21 @@ export function Game()
         checkVictory();
     }
 
-    async function transferLastCard(fromPile: CardList, toPile: CardList, openLast: boolean = true) 
-    {
-        const cardID = fromPile.pop()!;
-        toPile.push(cardID);
+    // async function transferLastCard(fromPile: CardList, toPile: CardList, openLast: boolean = true) 
+    // {
+    //     const cardID = fromPile.pop()!;
+    //     toPile.push(cardID);
 
-        view.configure_times(0.1, 0.2);
-        await view.apply_state(gameState, true);
+    //     view.configure_times(0.1, 0.2);
+    //     await view.apply_state(gameState, true);
 
-        if(openLast == true)
-        {
-            await openLastCard(fromPile);
-        }
+    //     if(openLast == true)
+    //     {
+    //         await openLastCard(fromPile);
+    //     }
 
-        checkVictory();
-    }
+    //     checkVictory();
+    // }
 
     async function openLastCard(pile: CardList) 
     {
@@ -690,13 +682,23 @@ export function Game()
     {
         if(gameState.wasteIDs.length > 0)
         {
-            const lastIndex = Math.max(0, gameState.wasteIDs.length - drawCardCount);
+            const lastIndex = Math.max(0, gameState.wasteIDs.length - displayWasteCardCount);
             
-            for(let i = gameState.wasteIDs.length - 1; i >= lastIndex; i--)
+            for(let i = gameState.wasteIDs.length - 1; i >= 0; i--)
             {
-                if(gameState.cards[gameState.wasteIDs[i]].isOpen == false)
+                if(i >= lastIndex)
                 {
-                    gameState.cards[gameState.wasteIDs[i]].isOpen = true;
+                    if(gameState.cards[gameState.wasteIDs[i]].isOpen == false)
+                    {
+                        gameState.cards[gameState.wasteIDs[i]].isOpen = true;
+                    }
+                }
+                else
+                {
+                    if(gameState.cards[gameState.wasteIDs[i]].isOpen == true)
+                    {
+                        gameState.cards[gameState.wasteIDs[i]].isOpen = false;
+                    }
                 }
             }
         }
@@ -732,7 +734,8 @@ export function Game()
             gameState.wasteIDs.reverse();
 
             transferCards(gameState.wasteIDs[0],
-                gameState.wasteIDs, gameState.stockIDs, false);
+                gameState.wasteIDs, gameState.stockIDs, 
+                0.1, 0.2, false);
 
             //shuffleStock();
         }
@@ -813,10 +816,9 @@ export function Game()
                             saveHistory();
 
                             //Переносим карту в доступный дом
-                            //transferCards(cardID, gameState.wasteIDs, gameState.homesIDs[availableHome.id]);
-
-                            //Фактически, из сброса всегда переносится именно последняя карта
-                            transferLastCard(gameState.wasteIDs, gameState.homesIDs[availableHome.id]);
+                            transferCards(cardID, 
+                                gameState.wasteIDs, gameState.homesIDs[availableHome.id],
+                                0.1, 0.2);
                             await openLastCardsWaste();
                         }
                         else
@@ -827,10 +829,9 @@ export function Game()
                                 saveHistory();
 
                                 //Переносим карту в доступную стопку
-                                //transferCards(cardID, gameState.wasteIDs, gameState.stacksIDs[availableStack.id]);
-                                
-                                //Фактически, из сброса всегда переносится именно последняя карта
-                                transferLastCard(gameState.wasteIDs, gameState.stacksIDs[availableStack.id]);
+                                transferCards(cardID, 
+                                    gameState.wasteIDs, gameState.stacksIDs[availableStack.id],
+                                    0.1, 0.2);
                                 await openLastCardsWaste();
                             }
                         }
@@ -858,10 +859,9 @@ export function Game()
                                 {
                                     saveHistory();
 
-                                    //transferCards(cardID, fromStack, gameState.homesIDs[availableHome.id]);
-
-                                    //Переносится именно последняя карта
-                                    transferLastCard(fromStack, gameState.homesIDs[availableHome.id])
+                                    transferCards(cardID, 
+                                        fromStack, gameState.homesIDs[availableHome.id],
+                                        0.1, 0.2);
                                 }
                                 //Иначе проверяем стопки как обычно
                                 else
@@ -871,10 +871,9 @@ export function Game()
                                     {
                                         saveHistory();
         
-                                        //transferCards(cardID, fromStack, gameState.stacksIDs[availableStack.id]);
-                                        
-                                        //Переносится именно последняя карта
-                                        transferLastCard(fromStack, gameState.stacksIDs[availableStack.id])
+                                        transferCards(cardID, 
+                                            fromStack, gameState.stacksIDs[availableStack.id],
+                                            0.1, 0.2);
                                     }
                                 }
                             }
@@ -889,7 +888,8 @@ export function Game()
         
                                     //Переносим карту в доступную стопку
                                     transferCards(cardID,
-                                        fromStack, gameState.stacksIDs[availableStack.id]);
+                                        fromStack, gameState.stacksIDs[availableStack.id],
+                                        0.1, 0.2);
                                 }
                             }
                         }
@@ -952,10 +952,9 @@ export function Game()
                         view.stop_drag();
 
                         //Переносим карту в доступный дом
-                        //transferCards(cardID, gameState.wasteIDs, gameState.homesIDs[availableHome.id]);
-
-                        //Фактически, из сброса всегда переносится именно последняя карта
-                        transferLastCard(gameState.wasteIDs, gameState.homesIDs[availableHome.id]);
+                        transferCards(cardID, 
+                            gameState.wasteIDs, gameState.homesIDs[availableHome.id],
+                            0.1, 0.2);
                         await openLastCardsWaste();
                     }
                     else
@@ -968,10 +967,9 @@ export function Game()
                             view.stop_drag();
 
                             //Переносим карту в доступную стопку
-                            //transferCards(cardID, gameState.wasteIDs, gameState.stacksIDs[availableStack.id]);
-                            
-                            //Фактически, из сброса всегда переносится именно последняя карта
-                            transferLastCard(gameState.wasteIDs, gameState.stacksIDs[availableStack.id]);
+                            transferCards(cardID, 
+                                gameState.wasteIDs, gameState.stacksIDs[availableStack.id],
+                                0.1, 0.2);
                             await openLastCardsWaste();
                         }
                     }
@@ -993,10 +991,9 @@ export function Game()
 
                             view.stop_drag();
     
-                            //transferCards(cardID, fromStack, gameState.homesIDs[availableHome.id]);
-    
-                            //Переносится именно последняя карта
-                            transferLastCard(fromStack, gameState.homesIDs[availableHome.id])
+                            transferCards(cardID, 
+                                fromStack, gameState.homesIDs[availableHome.id],
+                                0.1, 0.2);
                         }
                         //Иначе проверяем стопки как обычно
                         else
@@ -1008,10 +1005,9 @@ export function Game()
 
                                 view.stop_drag();
     
-                                //transferCards(cardID, fromStack, gameState.stacksIDs[availableStack.id]);
-                                
-                                //Переносится именно последняя карта
-                                transferLastCard(fromStack, gameState.stacksIDs[availableStack.id])
+                                transferCards(cardID, 
+                                    fromStack, gameState.stacksIDs[availableStack.id],
+                                    0.1, 0.2);
                             }
                         }
                     }
@@ -1028,7 +1024,8 @@ export function Game()
     
                             //Переносим карту в доступную стопку
                             transferCards(cardID,
-                                fromStack, gameState.stacksIDs[availableStack.id]);
+                                fromStack, gameState.stacksIDs[availableStack.id],
+                                0.1, 0.2);
                         }
                     }
                 }

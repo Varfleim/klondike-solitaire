@@ -1,4 +1,5 @@
 export const drawCardCount = 3;
+export const displayWasteCardCount = 3;
 export const stackCount = 7;
 export const homeCount = 4;
 export const helpMoveCount = 10;
