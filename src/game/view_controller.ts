@@ -6,7 +6,7 @@ import { StateItemInfo, TransitionList } from "../logic_state_machine/state_inte
 import { isEqualPos } from "./utils";
 import { GoManager } from "../modules/GoManager";
 import { IGameItem, Messages } from "../modules/modules_const";
-import { helpMoveCount } from "../gameConfig";
+import { drawCardCount, helpMoveCount } from "../gameConfig";
 
 interface ClickCardInfo extends IGameItem {
     id_stack?: number;
@@ -221,7 +221,7 @@ export function ViewController() {
             let mask = 0;
             mask = set_flag(mask, DcCardStates.STOPKA, true);
             mask = set_flag(mask, DcCardStates.OPENED, game_state.cards[id].isOpen);
-            state_manager.update_states(id, mask, 0);
+            state_manager.update_states(id, mask, i, 0);
         }
         // waste
         for(let i = 0; i < game_state.wasteIDs.length; i++)
@@ -230,7 +230,7 @@ export function ViewController() {
             let mask = 0;
             mask = set_flag(mask, DcCardStates.WASTE, true);
             mask = set_flag(mask, DcCardStates.OPENED, game_state.cards[id].isOpen);
-            state_manager.update_states(id, mask, i);
+            state_manager.update_states(id, mask, i, game_state.wasteIDs.length);
         }
         // stacks
         for (let s = 0; s < game_state.stacksIDs.length; s++) {
@@ -240,7 +240,7 @@ export function ViewController() {
                 let mask = 0;
                 mask = set_flag(mask, DcCardStates.STACK_1 + s, true);
                 mask = set_flag(mask, DcCardStates.OPENED, game_state.cards[id].isOpen);
-                state_manager.update_states(id, mask, i);
+                state_manager.update_states(id, mask, i, 0);
             }
         }
         // homes
@@ -254,7 +254,7 @@ export function ViewController() {
                 let mask = 0;
                 mask = set_flag(mask, DcCardStates.HOME_1 + h, true);
                 mask = set_flag(mask, DcCardStates.OPENED, game_state.cards[id].isOpen);
-                state_manager.update_states(id, mask, i);
+                state_manager.update_states(id, mask, i, 0);
             }
         }
     }
@@ -278,6 +278,10 @@ export function ViewController() {
             const tmp = go.get_position(go_waste);
             to_pos.x = tmp.x;
             to_pos.y = tmp.y;
+            
+            let offset_index = Math.max(0, last_state.wasteIDs.length - drawCardCount);
+            offset_index = Math.max(0, state.index - offset_index);
+            to_pos.x += offset_card * offset_index;
         }
         else {
             // стопки

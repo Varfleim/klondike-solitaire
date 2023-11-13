@@ -25,14 +25,17 @@ export function StateManager(transition_info_cb: TransitionInfoCallback) {
     }
 
     // передаем текущий стейт id объекта(из set_go_list) и маску информации + доп индекс если нужен
-    function update_states(id: number, mask: number, index: number) {
+    function update_states(id: number, mask: number, index: number, pile_length: number) {
         let old_state: null | StateInfo = null;
         if (states_set[id] != undefined)
             old_state = states_set[id];
-        const new_state: StateInfo = { mask, index };
+        const new_state: StateInfo = { mask, index, pile_length };
         states_set[id] = new_state;
 
-        if (force_apply || (old_state == null || (old_state.index != new_state.index || old_state.mask != new_state.mask)))
+        if (force_apply 
+            || (old_state == null 
+                || (old_state.index != new_state.index || old_state.mask != new_state.mask)
+                || (old_state.pile_length != new_state.pile_length)))
             on_state_changed(id, old_state, new_state);
     }
 

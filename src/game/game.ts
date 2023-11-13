@@ -1,4 +1,4 @@
-import { stackCount, homeCount } from "../gameConfig";
+import { drawCardCount, stackCount, homeCount } from "../gameConfig";
 import { CDRanks, CardData, CardState } from "./card";
 import { CardList, GameState } from "./state";
 import { createCardList, getShuffledIndexes } from "./utils";
@@ -89,9 +89,12 @@ export function Game()
             for(let j = 0; j <= i; j++)
             {
                 transferLastCard(gameState.stockIDs, gameState.stacksIDs[i], false);
+
+                await flow.delay(0.01);
+                await view.apply_state(gameState, false);
             }
 
-            openLastCard(gameState.stacksIDs[i]);
+            await openLastCard(gameState.stacksIDs[i]);
         }
 
         await view.apply_state(gameState, true);
@@ -115,18 +118,33 @@ export function Game()
         await view.apply_state(gameState, true);
     }
 
-    function lastFromStockToWaste()
+    async function lastFromStockToWaste()
     {
-        //Переворачиваем последнюю карту в сбросе
         if(gameState.wasteIDs.length > 0)
         {
-            const lastCardID = gameState.wasteIDs[gameState.wasteIDs.length - 1];
-            gameState.cards[lastCardID].isOpen = false;
-        }
+            const lastIndex = Math.max(0, gameState.wasteIDs.length - drawCardCount);
 
-        transferLastCard(gameState.stockIDs, gameState.wasteIDs, false)
+            for(let i = gameState.wasteIDs.length - 1; i >= lastIndex; i--)
+            {
+                gameState.cards[gameState.wasteIDs[i]].isOpen = false;
+            }
+
+            await view.apply_state(gameState, true);
+        }
         
-        openLastCard(gameState.wasteIDs);
+        for(let i = 0; i < drawCardCount; i++)
+        {
+            if(gameState.stockIDs.length > 0)
+            {
+                transferLastCard(gameState.stockIDs, gameState.wasteIDs, false);
+            }
+            else
+            {
+                break;
+            }
+        }
+        
+        await openLastCardsWaste();
     }
 
     function checkStock(cardID : number)
@@ -282,7 +300,11 @@ export function Game()
             //Если карта в сбросе
             if(cardPosition.position == 1)
             {
-                return true;
+                //Если карта последняя в сбросе
+                if(gameState.wasteIDs[gameState.wasteIDs.length - 1] == cardID)
+                {
+                    return true;
+                }
             }
             //Если карта в стопке
             else if(cardPosition.position == 2)
@@ -664,6 +686,24 @@ export function Game()
         await view.apply_state(gameState, true);
     }
 
+    async function openLastCardsWaste() 
+    {
+        if(gameState.wasteIDs.length > 0)
+        {
+            const lastIndex = Math.max(0, gameState.wasteIDs.length - drawCardCount);
+            
+            for(let i = gameState.wasteIDs.length - 1; i >= lastIndex; i--)
+            {
+                if(gameState.cards[gameState.wasteIDs[i]].isOpen == false)
+                {
+                    gameState.cards[gameState.wasteIDs[i]].isOpen = true;
+                }
+            }
+        }
+
+        await view.apply_state(gameState, true);
+    }
+
     async function shuffleStock() 
     {
         const cardIndexes = getShuffledIndexes(gameState.stockIDs.length);
@@ -684,12 +724,17 @@ export function Game()
     {
         if(gameState.wasteIDs.length > 0)
         {
-            gameState.cards[gameState.wasteIDs[gameState.wasteIDs.length - 1]].isOpen = false;
+            for(let i = 0; i < gameState.wasteIDs.length; i++)
+            {
+                gameState.cards[gameState.wasteIDs[i]].isOpen = false;
+            }
+
+            gameState.wasteIDs.reverse();
 
             transferCards(gameState.wasteIDs[0],
                 gameState.wasteIDs, gameState.stockIDs, false);
 
-            shuffleStock();
+            //shuffleStock();
         }
     }
 
@@ -749,7 +794,7 @@ export function Game()
                     {
                         saveHistory();
 
-                        //Переносим верхнюю карту в сброс
+                        //Переносим верхние карты в сброс
                         lastFromStockToWaste();
                     }
                 }
@@ -772,6 +817,7 @@ export function Game()
 
                             //Фактически, из сброса всегда переносится именно последняя карта
                             transferLastCard(gameState.wasteIDs, gameState.homesIDs[availableHome.id]);
+                            await openLastCardsWaste();
                         }
                         else
                         {
@@ -785,6 +831,7 @@ export function Game()
                                 
                                 //Фактически, из сброса всегда переносится именно последняя карта
                                 transferLastCard(gameState.wasteIDs, gameState.stacksIDs[availableStack.id]);
+                                await openLastCardsWaste();
                             }
                         }
                     }
@@ -909,6 +956,7 @@ export function Game()
 
                         //Фактически, из сброса всегда переносится именно последняя карта
                         transferLastCard(gameState.wasteIDs, gameState.homesIDs[availableHome.id]);
+                        await openLastCardsWaste();
                     }
                     else
                     {
@@ -924,6 +972,7 @@ export function Game()
                             
                             //Фактически, из сброса всегда переносится именно последняя карта
                             transferLastCard(gameState.wasteIDs, gameState.stacksIDs[availableStack.id]);
+                            await openLastCardsWaste();
                         }
                     }
                 }

@@ -2,6 +2,7 @@
 export interface StateInfo {
     mask: number;
     index: number;
+    pile_length: number;
 }
 
 export interface StateItemInfo {
