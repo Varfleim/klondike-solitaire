@@ -926,7 +926,7 @@ export function Game()
                             draggingCards = stack.slice(stack.indexOf(cardID), stack.length);
                         }
                     }
-                    
+
                     view.start_drag(draggingCards);
                 }
             }
@@ -937,99 +937,102 @@ export function Game()
                 const cardID = message.id_card;
                 log('DROP_STACK');
 
-                const cardPosition = getCardPosition(cardID);
-
-                if(cardPosition.position == 1)
+                if(cardIsDraggable(cardID) == true)
                 {
-                    //Поскольку в сбросе открыта только последняя карта, 
-                    //она всегда может отправиться в дом
-
-                    const availableHome = findAvailableHome(cardID, true, message.id_stack - stackCount);
-                    if(availableHome.available == true)
+                    const cardPosition = getCardPosition(cardID);
+    
+                    if(cardPosition.position == 1)
                     {
-                        saveHistory();
-
-                        view.stop_drag();
-
-                        //Переносим карту в доступный дом
-                        transferCards(cardID, 
-                            gameState.wasteIDs, gameState.homesIDs[availableHome.id],
-                            0.1, 0.2);
-                        await openLastCardsWaste();
-                    }
-                    else
-                    {
-                        const availableStack = findAvailableStack(cardID, true, message.id_stack);
-                        if(availableStack.available == true)
-                        {
-                            saveHistory();
-
-                            view.stop_drag();
-
-                            //Переносим карту в доступную стопку
-                            transferCards(cardID, 
-                                gameState.wasteIDs, gameState.stacksIDs[availableStack.id],
-                                0.1, 0.2);
-                            await openLastCardsWaste();
-                        }
-                    }
-                }
-                else if(cardPosition.position == 2)
-                {
-                    const fromStack = gameState.stacksIDs[cardPosition.id];
-
-                    //Поскольку в дом можно перемещать только по одной карте,
-                    //нужно проверить, является ли карта последней в стопке
-                    
-                    //Если да, то в первую очередь проверяем доступные дома
-                    if(fromStack[fromStack.length - 1] == cardID)
-                    {
+                        //Поскольку в сбросе открыта только последняя карта, 
+                        //она всегда может отправиться в дом
+    
                         const availableHome = findAvailableHome(cardID, true, message.id_stack - stackCount);
                         if(availableHome.available == true)
                         {
                             saveHistory();
-
+    
                             view.stop_drag();
     
+                            //Переносим карту в доступный дом
                             transferCards(cardID, 
-                                fromStack, gameState.homesIDs[availableHome.id],
+                                gameState.wasteIDs, gameState.homesIDs[availableHome.id],
                                 0.1, 0.2);
+                            await openLastCardsWaste();
                         }
-                        //Иначе проверяем стопки как обычно
                         else
                         {
                             const availableStack = findAvailableStack(cardID, true, message.id_stack);
                             if(availableStack.available == true)
                             {
                                 saveHistory();
-
+    
                                 view.stop_drag();
     
+                                //Переносим карту в доступную стопку
                                 transferCards(cardID, 
+                                    gameState.wasteIDs, gameState.stacksIDs[availableStack.id],
+                                    0.1, 0.2);
+                                await openLastCardsWaste();
+                            }
+                        }
+                    }
+                    else if(cardPosition.position == 2)
+                    {
+                        const fromStack = gameState.stacksIDs[cardPosition.id];
+    
+                        //Поскольку в дом можно перемещать только по одной карте,
+                        //нужно проверить, является ли карта последней в стопке
+                        
+                        //Если да, то в первую очередь проверяем доступные дома
+                        if(fromStack[fromStack.length - 1] == cardID)
+                        {
+                            const availableHome = findAvailableHome(cardID, true, message.id_stack - stackCount);
+                            if(availableHome.available == true)
+                            {
+                                saveHistory();
+    
+                                view.stop_drag();
+        
+                                transferCards(cardID, 
+                                    fromStack, gameState.homesIDs[availableHome.id],
+                                    0.1, 0.2);
+                            }
+                            //Иначе проверяем стопки как обычно
+                            else
+                            {
+                                const availableStack = findAvailableStack(cardID, true, message.id_stack);
+                                if(availableStack.available == true)
+                                {
+                                    saveHistory();
+    
+                                    view.stop_drag();
+        
+                                    transferCards(cardID, 
+                                        fromStack, gameState.stacksIDs[availableStack.id],
+                                        0.1, 0.2);
+                                }
+                            }
+                        }
+                        //Иначе карта и прочие карты, лежащие на ней, 
+                        //могут попасть только в другую стопку
+                        else
+                        {
+                            const availableStack = findAvailableStack(cardID, true, message.id_stack);
+                            if(availableStack.available == true)
+                            {
+                                saveHistory();
+    
+                                view.stop_drag();
+        
+                                //Переносим карту в доступную стопку
+                                transferCards(cardID,
                                     fromStack, gameState.stacksIDs[availableStack.id],
                                     0.1, 0.2);
                             }
                         }
                     }
-                    //Иначе карта и прочие карты, лежащие на ней, 
-                    //могут попасть только в другую стопку
-                    else
-                    {
-                        const availableStack = findAvailableStack(cardID, true, message.id_stack);
-                        if(availableStack.available == true)
-                        {
-                            saveHistory();
-
-                            view.stop_drag();
-    
-                            //Переносим карту в доступную стопку
-                            transferCards(cardID,
-                                fromStack, gameState.stacksIDs[availableStack.id],
-                                0.1, 0.2);
-                        }
-                    }
                 }
-
+    
                 view.cancel_drag();
             }
         }
